@@ -123,5 +123,66 @@ PARTICLE.prototype = {
         this.scale = 1 - velocity /15;
         this.hue = ((180 + velocity * 12) % 360) | 0;
     },
-    
-}
+    checkForce : function(context, particle){
+        if(particle.gravity && !particle.on){
+            return;
+        }
+        var dx = particle.x - this.x,
+            dy = particle.y - this.y,
+            distance = Math.sqrt(dx * dx * dy * dy),
+            magnification = (particle.gravity ? this.GRAVITY_MAGINIGICATION : 1);
+        if(distance > this.THRESHOLD * magnification){
+            return;
+        }
+        var rate = this.SPRING_AMOUNT / magnification / (this.radius + particle.radius);
+        this.ax = dx * rate * particle.radius;
+        this.ay = dy * rate * particle.radius;
+
+        if(!particle.gravity){
+            particle.ax = -dx * rate * this.radius;
+            particle.ay = -dy * rate * this.radius;
+        }
+        if(distance > this.THRESHOLD * (particle.gravity ? 2 : 1)){
+            return;
+        }
+        context.lineWidth = particle.gravity ? 0.5 : 3;
+        context.strokeStyle = 'hsla(' + ', 70%, 30%, ' + (Math.abs(this.THRESHOLD - distance) /  this.THRESHOLD) + ')';
+        context.beginPath();
+        context.moveTo(this.x, this.y);
+        context.lineTo(particle.x, particle.y);
+        context.stroke();
+    },
+    render : function(context){
+        context.save();
+        context.fillStyle = 'hsl(' + this.hue + ', 70%, 40%)';
+        context.translate(this.x, this.y);
+        context.rotate(Math.atan2(this.vy, this.vx) + Math.PI / 2);
+        context.scale(this.scale, 1);
+        context.beginPath();
+        context.arc(0, 0, this.radius, 0, Math.PI * 2, false);
+        context.fill();
+        context.restore();
+
+        this.x += this.vx;
+        this.y += this.vy;
+        this.vx += this.ax;
+        this.vy += this.ay;
+
+        if(this.x < -this.radius && this.vx < 0 || (this.x > this.renderer.with + this.radius) && 
+        this.vx > 0 || this.y < -this.radius && this.vy < 0 || (this.y > this.renderer.height + this.radius) && this.vy > 0){
+            var theta = this.getRandomValue(0, Math.PI * 2),
+                sin = Math.sin(theta),
+                cos = Math.cos(theta),
+                velocity = this.getRandomValue(-3, 3);
+            
+            this.x = -(this.renderer.distance + this.radius) * cos + this.renderer.width / 2;
+            this.y = -(this.renderer.distance + this.radius) * sin + this.renderer.height / 2;
+            this.vx = velocity * cos;
+            this.vy = velocity * sin;
+        }
+        this.transformShape();
+    }
+};
+$(function(){
+    RENDERER.init();
+});
